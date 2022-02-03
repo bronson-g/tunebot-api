@@ -2,9 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -30,20 +33,21 @@ type User struct {
 	Blacklist Playlist   `json:"blacklist"`
 }
 
-func CreateUser(username string, password string) (User, error) {
-	id := uuid.New()
+func createUser(username string, password string) (User, error) {
+	id := uuid.New().String()
 	_, err := DB.Exec("insert into `user` (`id`, `username`, `password`) values (uuid_to_bin(?), ?, ?);", id, username, password)
 	return User{id, username, password, []Playlist{}, Playlist{}}, err
 }
 
-func GetUser(username string, password string) (User, error) {
-	user := User{"", username, password, []Playlist{}, Playlist{}}
+func getUser(username string, password string) (User, error) {
+	user := User{"", username, password, []Playlist{}, Playlist{"", false, []Song{}}}
 	result, err := DB.Query("select bin_to_uuid(`id`) as `id` from `user` where `username` = ? and `password` = ?;", username, password)
 
-	if err != nil && result.Next() {
+	if err == nil && result.Next() {
 		result.Scan(&user.Id)
 	} else {
 		// user not found or err
+		fmt.Println(err.Error())
 	}
 
 	return user, getPlaylists(&user)
@@ -52,7 +56,7 @@ func GetUser(username string, password string) (User, error) {
 func getPlaylists(user *User) error {
 	result, err := DB.Query("select bin_to_uuid(`playlist`.`id`) as `playlist_id`, `playlist`.`enabled`, `playlist`.`is_blacklist`, bin_to_uuid(`song`.`id`) as `song_id`, `song`.`url` from `playlist` inner join `playlist_song` on `playlist`.`id` = `playlist_song`.`playlist_id` inner join `song` on `song`.`id` = `playlist_song`.`song_id` where `playlist`.`user_id` = ?;", user.Id)
 
-	if err != nil {
+	if err == nil {
 		playlist := Playlist{"", false, []Song{}}
 		tempPlaylist := Playlist{"", false, []Song{}}
 		wasBlacklist := false
@@ -81,20 +85,73 @@ func getPlaylists(user *User) error {
 	return err
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
-	// make sure this device isn't already registered
-	fmt.Fprintf(w, "register")
+func register(w http.ResponseWriter, req *http.Request) {
+	user := User{}
+	err := json.NewDecoder(req.Body).Decode(&user)
+
+	if err != nil {
+		errorResponse(err, w)
+		return
+	}
+
+	user, err = createUser(user.Username, user.Password)
+
+	if err != nil {
+		errorResponse(err, w)
+	} else {
+		data, err := json.Marshal(user)
+
+		if err != nil {
+			errorResponse(err, w)
+		} else {
+			w.Write(data)
+		}
+	}
+}
+
+func login(w http.ResponseWriter, req *http.Request) {
+	user := User{}
+	err := json.NewDecoder(req.Body).Decode(&user)
+
+	if err != nil {
+		errorResponse(err, w)
+		return
+	}
+
+	user, err = getUser(user.Username, user.Password)
+
+	if err != nil {
+		errorResponse(err, w)
+	} else {
+		data, err := json.Marshal(user)
+
+		if err != nil {
+			errorResponse(err, w)
+		} else {
+			w.Write(data)
+		}
+	}
 }
 
 func main() {
-	DB, err := sql.Open("mysql", "root:Se4Q2Lp-3587@tcp(localhost)/tunebot")
-	if err != nil {
-		//todo handle it (fatal, can't continue.)
+	db, err := sql.Open("mysql", "root:Se4Q2Lp-3587@tcp(localhost)/tunebot")
+	if db == nil || err != nil {
+		fmt.Println("Failed to connect to database")
+		fmt.Println(err.Error())
+		return
 	}
+	DB = db
 	defer DB.Close()
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/register/", register).Methods("POST")
+	router.HandleFunc("/api/login/", login).Methods("POST")
 	http.ListenAndServe(":8080", router)
+}
+
+func errorResponse(err error, w http.ResponseWriter) {
+	if err != nil {
+		w.Write([]byte("{\"error\":\"" + strings.Replace(err.Error(), "\"", "\\\"", -1) + "\"}"))
+	}
 }
