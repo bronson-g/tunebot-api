@@ -1,7 +1,7 @@
 create table if not exists `user` (
     `id` binary(16) primary key,
     `username` varchar(32) not null unique,
-    `password` varchar(128) not null
+    `password` binary(60) not null
 );
 
 create table if not exists `song` (
@@ -12,8 +12,8 @@ create table if not exists `song` (
 create table if not exists `playlist` (
     `id` binary(16) primary key,
     `user_id` binary(16) not null,
-    `is_blacklist` tinyint(1) not null,
-	`enabled` tinyint(1) not null,
+    `is_blacklist` bit,
+	`enabled` bit not null,
     foreign key(`user_id`) references `user`(`id`),
     constraint `one_blacklist_per_user` unique (`user_id`, `is_blacklist`)
 );

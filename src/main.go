@@ -28,7 +28,7 @@ type Playlist struct {
 type User struct {
 	Id        string     `json:"id"`
 	Username  string     `json:"username"`
-	Password  string     `json:"password"`
+	Password  string     `json:"password,omitempty"` // remember to ALWAYS set this to = "" before writing out data!
 	Playlists []Playlist `json:"playlists"`
 	Blacklist Playlist   `json:"blacklist"`
 }
@@ -54,7 +54,8 @@ func getUser(username string, password string) (User, error) {
 }
 
 func getPlaylists(user *User) error {
-	result, err := DB.Query("select bin_to_uuid(`playlist`.`id`) as `playlist_id`, `playlist`.`enabled`, `playlist`.`is_blacklist`, bin_to_uuid(`song`.`id`) as `song_id`, `song`.`url` from `playlist` inner join `playlist_song` on `playlist`.`id` = `playlist_song`.`playlist_id` inner join `song` on `song`.`id` = `playlist_song`.`song_id` where `playlist`.`user_id` = ?;", user.Id)
+	//todo remember to insert is_blacklist == false as NULL
+	result, err := DB.Query("select bin_to_uuid(`playlist`.`id`) as `playlist_id`, `playlist`.`enabled`, coalesce(`playlist`.`is_blacklist`, 0) as `is_blacklist`, bin_to_uuid(`song`.`id`) as `song_id`, `song`.`url` from `playlist` inner join `playlist_song` on `playlist`.`id` = `playlist_song`.`playlist_id` inner join `song` on `song`.`id` = `playlist_song`.`song_id` where `playlist`.`user_id` = ?;", user.Id)
 
 	if err == nil {
 		playlist := Playlist{"", false, []Song{}}
@@ -99,6 +100,7 @@ func register(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse(err, w)
 	} else {
+		user.Password = ""
 		data, err := json.Marshal(user)
 
 		if err != nil {
@@ -123,6 +125,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		errorResponse(err, w)
 	} else {
+		user.Password = ""
 		data, err := json.Marshal(user)
 
 		if err != nil {
