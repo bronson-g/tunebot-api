@@ -106,7 +106,7 @@ func register(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			errorResponse(err, w)
 		} else {
-			w.Write(data)
+			successResponse(data, w)
 		}
 	}
 }
@@ -131,7 +131,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			errorResponse(err, w)
 		} else {
-			w.Write(data)
+			successResponse(data, w)
 		}
 	}
 }
@@ -153,8 +153,16 @@ func main() {
 	http.ListenAndServe(":8080", router)
 }
 
+func successResponse(data []byte, w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
 func errorResponse(err error, w http.ResponseWriter) {
 	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("{\"error\":\"" + strings.Replace(err.Error(), "\"", "\\\"", -1) + "\"}"))
 	}
 }
