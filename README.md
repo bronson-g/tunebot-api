@@ -1,13 +1,6 @@
 # tunebot api
 The API that handles manages users and their playlists for the [tunebot app](TBD) and [tunebot controller](https://github.com/cbeimers113/tunebot-controller).
 
-## Run Locally (port 8080)
-```bash
-data/startup_windows.sh
-cd src/
-go run main.go
-```
-
 ## API Endpoints
 
 ### POST /api/register/

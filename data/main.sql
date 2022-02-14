@@ -1,3 +1,7 @@
+create database if not exists `tunebot`;
+
+use `tunebot`;
+
 create table if not exists `user` (
     `id` binary(16) primary key,
     `username` varchar(32) not null unique,
@@ -12,10 +16,10 @@ create table if not exists `song` (
 create table if not exists `playlist` (
     `id` binary(16) primary key,
     `user_id` binary(16) not null,
-    `is_blacklist` bit,
+    `is_blacklist` bit, -- NOTE: using NULL as false instead of 0. using 1 as true
 	`enabled` bit not null,
     foreign key(`user_id`) references `user`(`id`),
-    constraint `one_blacklist_per_user` unique (`user_id`, `is_blacklist`)
+    constraint `one_blacklist_per_user` unique (`user_id`, `is_blacklist`) -- NOTE: NULL falses won't be constrained
 );
 
 create table if not exists `playlist_song` (
