@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/valyala/fastjson"
 )
 
 var DB *sql.DB
@@ -21,6 +24,7 @@ type Song struct {
 
 type Playlist struct {
 	Id      string `json:"id"`
+	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
 	Songs   []Song `json:"songs"`
 }
@@ -35,58 +39,169 @@ type User struct {
 
 func createUser(username string, password string) (User, error) {
 	id := uuid.New().String()
-	_, err := DB.Exec("insert into `user` (`id`, `username`, `password`) values (uuid_to_bin(?), ?, ?);", id, username, password)
-	return User{id, username, password, []Playlist{}, Playlist{}}, err
+	blacklist := Playlist{"", "Blacklist", false, []Song{}}
+	_, err := DB.Exec(`
+		insert into user 
+		(id, username, password) 
+		values 
+		(uuid_to_bin(?), ?, ?);`,
+		id, username, password)
+
+	if err == nil {
+		blacklist, err = createPlaylist(id, "Blacklist", true)
+	}
+
+	return User{id, username, password, []Playlist{}, blacklist}, err
 }
 
 func getUser(username string, password string) (User, error) {
-	user := User{"", username, password, []Playlist{}, Playlist{"", false, []Song{}}}
-	result, err := DB.Query("select bin_to_uuid(`id`) as `id` from `user` where `username` = ? and `password` = ?;", username, password)
+	user := User{"", username, password, []Playlist{}, Playlist{"", "Blacklist", false, []Song{}}}
+	result, err := DB.Query(`
+		select bin_to_uuid(id) as id 
+		from user 
+		where username = ? and password = cast(? as binary(60));`,
+		username, password)
 
 	if err == nil && result.Next() {
 		result.Scan(&user.Id)
-	} else {
-		// user not found or err
-		fmt.Println(err.Error())
+		err = getPlaylists(&user)
+	} else if err == nil {
+		err = errors.New("invalid login credentials")
 	}
 
-	return user, getPlaylists(&user)
+	return user, err
+}
+
+func createPlaylist(userId string, name string, enabled bool) (Playlist, error) {
+	id := uuid.New().String()
+	_, err := DB.Exec(`
+		insert into playlist 
+		(id, name, user_id, enabled) 
+		values 
+		(uuid_to_bin(?), ?, uuid_to_bin(?), ?);`,
+		id, name, userId, enabled)
+
+	return Playlist{id, name, enabled, []Song{}}, err
+}
+
+func updatePlaylist(playlist *Playlist) error {
+	_, err := DB.Exec(`
+		update playlist 
+		set name = ?, enabled = ? 
+		where id = ?;`,
+		playlist.Name, playlist.Enabled, playlist.Id)
+
+	return err
+}
+
+func deletePlaylist(playlistId string) error {
+	_, err := DB.Exec(`
+		delete from playlist 
+		where id = ?;`,
+		playlistId)
+
+	return err
+}
+
+func addSongToPlaylist(playlistId string, url string) (Song, error) {
+	songId := uuid.New().String()
+	_, err := DB.Exec(`
+		insert into song 
+		(id, url) 
+		values 
+		(uuid_to_bin(?), ?);`,
+		songId, url)
+
+	if err != nil {
+		result, err := DB.Query(`
+			select bin_to_uuid(id) as id 
+			from song 
+			where url = ?;`,
+			url)
+
+		if err == nil && result.Next() {
+			result.Scan(&songId)
+		}
+	}
+
+	_, err = DB.Exec(`
+		insert into playlist_song 
+		(id, playlist_id, song_id) 
+		values 
+		(uuid_to_bin(?), uuid_to_bin(?), uuid_to_bin(?));`,
+		uuid.New().String(), playlistId, songId)
+
+	return Song{songId, url}, err
+}
+
+func addPlaylist(user *User, playlist Playlist) {
+	if playlist.Id == "" {
+		return
+	}
+
+	if playlist.Name == "Blacklist" {
+		for i := 0; i < len(playlist.Songs); i++ {
+			addSong(&user.Blacklist, playlist.Songs[i])
+		}
+
+		user.Blacklist.Id = playlist.Id
+		user.Blacklist.Name = playlist.Name
+		user.Blacklist.Enabled = playlist.Enabled
+	} else {
+		for i := 0; i < len(user.Playlists); i++ {
+			if playlist.Id == user.Playlists[i].Id {
+				for j := 0; j < len(playlist.Songs); j++ {
+					addSong(&user.Playlists[i], playlist.Songs[j])
+				}
+				return
+			}
+		}
+
+		user.Playlists = append(user.Playlists, playlist)
+	}
+}
+
+func addSong(playlist *Playlist, song Song) {
+	if song.Id == "" {
+		return
+	}
+
+	for i := 0; i < len(playlist.Songs); i++ {
+		if playlist.Id == playlist.Songs[i].Id {
+			return
+		}
+	}
+
+	playlist.Songs = append(playlist.Songs, song)
 }
 
 func getPlaylists(user *User) error {
-	//todo remember to insert is_blacklist == false as NULL
-	result, err := DB.Query("select bin_to_uuid(`playlist`.`id`) as `playlist_id`, `playlist`.`enabled`, coalesce(`playlist`.`is_blacklist`, 0) as `is_blacklist`, bin_to_uuid(`song`.`id`) as `song_id`, `song`.`url` from `playlist` inner join `playlist_song` on `playlist`.`id` = `playlist_song`.`playlist_id` inner join `song` on `song`.`id` = `playlist_song`.`song_id` where `playlist`.`user_id` = ?;", user.Id)
+	result, err := DB.Query(`
+		select bin_to_uuid(p.id) as playlist_id, p.name, p.enabled, bin_to_uuid(s.id) as song_id, s.url 
+		from playlist as p 
+		left join playlist_song 
+			on p.id = playlist_song.playlist_id 
+		left join song as s 
+			on s.id = playlist_song.song_id 
+		where bin_to_uuid(p.user_id) = ?
+		order by playlist_id;`,
+		user.Id)
 
 	if err == nil {
-		playlist := Playlist{"", false, []Song{}}
-		tempPlaylist := Playlist{"", false, []Song{}}
-		wasBlacklist := false
-
 		for result.Next() {
+			playlist := Playlist{"", "", false, []Song{}}
 			song := Song{}
 
-			isBlacklist := false
-			result.Scan(&tempPlaylist.Id, &tempPlaylist.Enabled, &isBlacklist, &song.Id, &song.Url)
-
-			if tempPlaylist.Id != playlist.Id {
-				if playlist.Id != "" {
-					if wasBlacklist {
-						user.Blacklist = playlist
-					} else {
-						user.Playlists = append(user.Playlists, playlist)
-					}
-				}
-				tempPlaylist.Songs = append(tempPlaylist.Songs, song)
-				playlist = tempPlaylist
-			}
-			wasBlacklist = isBlacklist
+			result.Scan(&playlist.Id, &playlist.Name, &playlist.Enabled, &song.Id, &song.Url)
+			addSong(&playlist, song)
+			addPlaylist(user, playlist)
 		}
 	}
 
 	return err
 }
 
-func register(w http.ResponseWriter, req *http.Request) {
+func registerEndpoint(w http.ResponseWriter, req *http.Request) {
 	user := User{}
 	err := json.NewDecoder(req.Body).Decode(&user)
 
@@ -111,7 +226,7 @@ func register(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func login(w http.ResponseWriter, req *http.Request) {
+func loginEndpoint(w http.ResponseWriter, req *http.Request) {
 	user := User{}
 	err := json.NewDecoder(req.Body).Decode(&user)
 
@@ -136,6 +251,26 @@ func login(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func createPlaylistEndpoint(w http.ResponseWriter, req *http.Request) {
+	var parser fastjson.Parser
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(req.Body)
+	raw, err := parser.Parse(buf.String())
+
+	if err != nil {
+		errorResponse(err, w)
+		return
+	}
+
+	playlist, err := createPlaylist(string(raw.GetStringBytes("userId")), string(raw.GetStringBytes("name")), true)
+	if err != nil {
+		errorResponse(err, w)
+		return
+	}
+	data, err := json.Marshal(playlist)
+	successResponse(data, w)
+}
+
 func main() {
 	db, err := sql.Open("mysql", "root:Se4Q2Lp-3587@tcp(localhost)/tunebot")
 	if db == nil || err != nil {
@@ -148,8 +283,9 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/register/", register).Methods("POST")
-	router.HandleFunc("/api/login/", login).Methods("POST")
+	router.HandleFunc("/user/register/", registerEndpoint).Methods("POST")
+	router.HandleFunc("/user/login/", loginEndpoint).Methods("POST")
+	router.HandleFunc("/playlist/create/", createPlaylistEndpoint).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }
 

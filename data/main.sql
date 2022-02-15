@@ -15,12 +15,11 @@ create table if not exists `song` (
 
 create table if not exists `playlist` (
     `id` binary(16) primary key,
+    `name` varchar(64) not null,
     `user_id` binary(16) not null,
-    `is_blacklist` bit, -- NOTE: using NULL as false instead of 0. using 1 as true
 	`enabled` bit not null,
     foreign key(`user_id`) references `user`(`id`),
-    constraint `one_blacklist_per_user` unique (`user_id`, `is_blacklist`) 
-    -- NOTE: NULL falses won't be constrained (this way each user can have many playlists but only 1 blacklist)
+    constraint `unique_playlist_name_per_user` unique (`user_id`, `name`)
 );
 
 create table if not exists `playlist_song` (
