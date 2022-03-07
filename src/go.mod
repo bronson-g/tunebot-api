@@ -1,4 +1,4 @@
-module tunebot.net/api
+module github.com/bronson-g/tunebot-api
 
 go 1.17
 
