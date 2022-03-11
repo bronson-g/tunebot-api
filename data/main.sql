@@ -30,3 +30,7 @@ create table if not exists `playlist_song` (
     foreign key(`playlist_id`) references `playlist`(`id`),
     constraint `no_duplicate_song_per_playlist` unique (`song_id`, `playlist_id`)
 );
+
+create user 'tunebot'@'localhost' identified by '6N9.h+Q.H*ah.zPZ';
+grant all privileges on `tunebot`.* to 'tunebot'@'localhost';
+flush privileges;

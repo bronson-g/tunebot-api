@@ -9,8 +9,8 @@ import (
 var db *sql.DB = nil
 
 const driver = "mysql"
-const user = "root"
-const password = "Se4Q2Lp-3587"
+const user = "tunebot"
+const password = "6N9.h+Q.H*ah.zPZ"
 const protocol = "tcp"
 const host = "localhost"
 const database = "tunebot"
