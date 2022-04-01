@@ -8,6 +8,13 @@ create table if not exists `user` (
     `password` binary(60) not null
 );
 
+create table if not exists `device` (
+    `id` binary(16) primary key,
+    `user_id` binary(16) not null,
+    `mac` varchar(17) not null unique,
+    foreign key(`user_id`) references `user`(`id`)
+);
+
 create table if not exists `song` (
     `id` binary(16) primary key,
 	`url` varchar(256) not null unique

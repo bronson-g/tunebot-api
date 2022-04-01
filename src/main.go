@@ -22,6 +22,8 @@ func main() {
 
 	router.HandleFunc("/user/register/", endpoint.Register).Methods("POST")
 	router.HandleFunc("/user/login/", endpoint.Login).Methods("POST")
+	router.HandleFunc("/device/user/link/", endpoint.Link).Methods("POST")
+	router.HandleFunc("/device/user/get/", endpoint.Get).Methods("POST")
 	router.HandleFunc("/playlist/create/", endpoint.Create).Methods("POST")
 	router.HandleFunc("/playlist/update/", endpoint.Update).Methods("POST")
 	router.HandleFunc("/playlist/delete/", endpoint.Delete).Methods("POST")
