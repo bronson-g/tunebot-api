@@ -98,6 +98,9 @@ func addSong(playlist *Playlist, song Song) {
 }
 
 func (u *User) getPlaylists() error {
+	u.Playlists = []Playlist{}
+	u.Blacklist = Playlist{"", "Blacklist", false, []Song{}}
+
 	result, err := db.Query(`
 		select bin_to_uuid(p.id) as playlist_id, p.name, bin_to_uuid(s.id) as song_id, s.url, cast(p.enabled as signed) as enabled
 		from playlist as p 
