@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	log.Println("tunebot-api")
+	log.Println(log.Purple("tunebot-api"))
 
 	err := model.Connect()
 	if err != nil {
@@ -34,6 +34,6 @@ func main() {
 	router.HandleFunc("/playlist/song/add/", endpoint.Add).Methods("PUT")
 	router.HandleFunc("/playlist/song/remove/", endpoint.Remove).Methods("DELETE")
 
-	log.Println(log.Green("Listening on port 8080."))
+	log.Println(log.Purple("Listening on port 8080."))
 	http.ListenAndServe(":8080", router)
 }

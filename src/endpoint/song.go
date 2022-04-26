@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/bronson-g/tunebot-api/log"
 	"github.com/bronson-g/tunebot-api/model"
 	"github.com/valyala/fastjson"
 )
 
 func Add(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("song.add"))
+
 	var parser fastjson.Parser
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(req.Body)
@@ -33,6 +36,8 @@ func Add(w http.ResponseWriter, req *http.Request) {
 }
 
 func Remove(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("song.remove"))
+
 	var parser fastjson.Parser
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(req.Body)

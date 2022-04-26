@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/bronson-g/tunebot-api/log"
 	"github.com/bronson-g/tunebot-api/model"
 )
 
 func Register(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("user.register"))
+
 	user := model.User{}
 	err := json.NewDecoder(req.Body).Decode(&user)
 
@@ -33,6 +36,8 @@ func Register(w http.ResponseWriter, req *http.Request) {
 }
 
 func Login(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("user.login"))
+
 	user := model.User{}
 	err := json.NewDecoder(req.Body).Decode(&user)
 

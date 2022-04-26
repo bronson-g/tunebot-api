@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/bronson-g/tunebot-api/log"
 	"github.com/bronson-g/tunebot-api/model"
 )
 
 func Link(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("device.link"))
+
 	device := model.Device{}
 	err := json.NewDecoder(req.Body).Decode(&device)
 
@@ -32,6 +35,8 @@ func Link(w http.ResponseWriter, req *http.Request) {
 }
 
 func Get(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("device.get"))
+
 	device := model.Device{}
 	err := json.NewDecoder(req.Body).Decode(&device)
 

@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/bronson-g/tunebot-api/log"
 	"github.com/bronson-g/tunebot-api/model"
 	"github.com/valyala/fastjson"
 )
 
 func Create(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("playlist.create"))
+
 	var parser fastjson.Parser
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(req.Body)
@@ -32,6 +35,8 @@ func Create(w http.ResponseWriter, req *http.Request) {
 }
 
 func Update(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("playlist.update"))
+
 	playlist := model.Playlist{}
 	err := json.NewDecoder(req.Body).Decode(&playlist)
 
@@ -52,6 +57,8 @@ func Update(w http.ResponseWriter, req *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, req *http.Request) {
+	log.Println(log.Cyan("playlist.delete"))
+
 	playlist := model.Playlist{}
 	err := json.NewDecoder(req.Body).Decode(&playlist)
 
