@@ -18,7 +18,7 @@ const host = "localhost"
 const database = "tunebot"
 
 func Connect() error {
-	log.Println("Connecting to database.")
+	log.Println("Connecting to database...")
 	var err error
 	db, err = sql.Open(driver, user+":"+password+"@"+protocol+"("+host+")/"+database)
 	return err

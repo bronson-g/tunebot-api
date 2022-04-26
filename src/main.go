@@ -17,6 +17,8 @@ func main() {
 		log.Println(log.Red("Failed to connect to database."))
 		log.Println(log.Red(err.Error()))
 		return
+	} else {
+		log.Println(log.Green("Connected to database."))
 	}
 	defer model.Disconnect()
 
@@ -32,7 +34,7 @@ func main() {
 	router.HandleFunc("/playlist/delete/", endpoint.Delete).Methods("POST")
 	router.HandleFunc("/playlist/song/add/", endpoint.Add).Methods("POST")
 	router.HandleFunc("/playlist/song/remove/", endpoint.Remove).Methods("POST")
-	http.ListenAndServe(":8080", router)
 
 	log.Println(log.Green("Listening on port 8080."))
+	http.ListenAndServe(":8080", router)
 }
