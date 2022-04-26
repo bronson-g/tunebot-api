@@ -3,6 +3,8 @@ package model
 import (
 	"database/sql"
 
+	"github.com/bronson-g/tunebot-api/log"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -16,6 +18,7 @@ const host = "localhost"
 const database = "tunebot"
 
 func Connect() error {
+	log.Println("Connecting to database.")
 	var err error
 	db, err = sql.Open(driver, user+":"+password+"@"+protocol+"("+host+")/"+database)
 	return err
@@ -26,4 +29,5 @@ func Disconnect() {
 		db.Close()
 		db = nil
 	}
+	log.Println("Disconnected from database.")
 }

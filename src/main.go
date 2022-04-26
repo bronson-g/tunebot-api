@@ -1,25 +1,28 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/bronson-g/tunebot-api/endpoint"
+	"github.com/bronson-g/tunebot-api/log"
 	"github.com/bronson-g/tunebot-api/model"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	log.Println("tunebot-api")
+
 	err := model.Connect()
 	if err != nil {
-		fmt.Println("Failed to connect to database")
-		fmt.Println(err.Error())
+		log.Println(log.Red("Failed to connect to database."))
+		log.Println(log.Red(err.Error()))
 		return
 	}
 	defer model.Disconnect()
 
 	router := mux.NewRouter()
 
+	//TODO: change the http methods to reflect behaviour, DELETE/PUT etc not all POST
 	router.HandleFunc("/user/register/", endpoint.Register).Methods("POST")
 	router.HandleFunc("/user/login/", endpoint.Login).Methods("POST")
 	router.HandleFunc("/device/user/link/", endpoint.Link).Methods("POST")
@@ -30,4 +33,6 @@ func main() {
 	router.HandleFunc("/playlist/song/add/", endpoint.Add).Methods("POST")
 	router.HandleFunc("/playlist/song/remove/", endpoint.Remove).Methods("POST")
 	http.ListenAndServe(":8080", router)
+
+	log.Println(log.Green("Listening on port 8080."))
 }
