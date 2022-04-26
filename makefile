@@ -5,4 +5,5 @@ ifeq ($(OS),Windows_NT)
 endif
 
 all:
-	cd src/; $(MYSQL); go run main.go
+	$(MYSQL) &
+	cd src/ && go run main.go

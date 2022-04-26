@@ -3,11 +3,11 @@ package log
 import "fmt"
 
 func Red(txt string) string {
-	return "\\e[31m" + txt + "\\e[39m"
+	return "\033[31m" + txt + "\033[0m"
 }
 
 func Green(txt string) string {
-	return "\\e[32m" + txt + "\\e[39m"
+	return "\033[32m" + txt + "\033[39m"
 }
 
 func Println(message string) {
